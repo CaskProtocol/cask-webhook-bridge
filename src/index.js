@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const WebhookBridge = require('./WebhookBridge');
 
 const bridge = new WebhookBridge(
