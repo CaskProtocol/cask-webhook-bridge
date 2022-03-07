@@ -27,7 +27,7 @@ class WebhookBridge {
                         auto: true,
                         delay: 5000,
                         maxAttempts: 5,
-                        onTimeout: false
+                        onTimeout: true
                     }
                 }),
             )
