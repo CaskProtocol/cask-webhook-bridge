@@ -35,7 +35,13 @@ class WebhookBridge {
 
     contractListener() {
 
-        const providerAddresses = this.providerAddress;
+        let providerAddresses;
+
+        if (this.providerAddress.includes(',')) {
+            providerAddresses = this.providerAddress.split(',');
+        } else {
+            providerAddresses = this.providerAddress;
+        }
 
         const CaskSubscriptions = new ethers.Contract(
             cask.core.addresses.CaskSubscriptions[this.chain],
@@ -234,10 +240,14 @@ class WebhookBridge {
 
     async sendWebhook(payload) {
         try {
-            console.log(`Sending webhook for event ${payload.event}`);
+            if (process.env.VERBOSE) {
+                console.log(`Sending webhook for event ${payload.event}`);
+            }
             axios.post(this.endpoint, payload).then(response => {
                 if (response.status >= 200 && response.status < 400) {
-                    console.log(`Successful webhook post`);
+                    if (process.env.VERBOSE) {
+                        console.log(`Successful webhook post`);
+                    }
                 } else {
                     console.log(`Error from remote endpoint: ${response.status}`);
                 }
