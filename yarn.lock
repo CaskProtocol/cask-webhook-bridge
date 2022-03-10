@@ -2,10 +2,10 @@
 # yarn lockfile v1
 
 
-"@caskprotocol/sdk@^1.0.2":
-  version "1.0.2"
-  resolved "https://registry.yarnpkg.com/@caskprotocol/sdk/-/sdk-1.0.2.tgz#c80188916ca4f8d0538f4edefa83a3e3ead2307a"
-  integrity sha512-IKUSWUMi0+D2pf2nDJY4N810jnJcEkSKu58WqTQmxsrYeOn5DnJbEH5CQGyfRKnoYv99qb/7vnW3lATBZ1V+NA==
+"@caskprotocol/sdk@^1.0.3":
+  version "1.0.3"
+  resolved "https://registry.yarnpkg.com/@caskprotocol/sdk/-/sdk-1.0.3.tgz#e96129a25791d1b059053c26f035c45a665c253a"
+  integrity sha512-4n8cz0Z6Flam5IBqmBfpOK+vVDLCqSiO5Y+bTgxxLr5BW/kD5beGEVa+hn71S9sSMWiq01VKZORo9+k/zIXDWg==
   dependencies:
     ethers "^5.5.4"
     keccak256 "^1.0.6"

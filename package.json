@@ -10,7 +10,7 @@
     "start": "node ."
   },
   "dependencies": {
-    "@caskprotocol/sdk": "^1.0.2",
+    "@caskprotocol/sdk": "^1.0.3",
     "axios": "^0.26.0",
     "dotenv": "^16.0.0",
     "ethers": "^5.5.4",

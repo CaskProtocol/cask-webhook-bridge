@@ -3,19 +3,13 @@ const Web3WsProvider = require('web3-providers-ws');
 const axios = require('axios');
 const cask = require('@caskprotocol/sdk');
 
-const environments = {
-    'production': cask.core.chains.POLYGON_MAINNET,
-    'integration': cask.core.chains.POLYGON_MUMBAI,
-    'development' : cask.core.chains.ETH_HARDHAT,
-};
-
 class WebhookBridge {
 
     constructor(wssProvider, providerAddress, endpoint, environment='development') {
         this.environment = environment;
         this.providerAddress = providerAddress;
         this.endpoint = endpoint;
-        this.chain = environments[environment];
+        this.chain = cask.core.defaultChains[environment];
         this.provider =
             new ethers.providers.Web3Provider(
                 new Web3WsProvider(wssProvider, {
@@ -44,8 +38,8 @@ class WebhookBridge {
         }
 
         const CaskSubscriptions = new ethers.Contract(
-            cask.core.addresses.CaskSubscriptions[this.chain],
-            cask.core.abi.CaskSubscriptions[this.chain],
+            cask.core.deployments.CaskSubscriptions[this.environment][this.chain],
+            cask.core.abi.CaskSubscriptions[this.environment],
             this.provider);
 
         CaskSubscriptions.on(
@@ -244,15 +238,14 @@ class WebhookBridge {
             if (process.env.VERBOSE) {
                 console.log(`Sending webhook for event ${payload.event}`);
             }
-            axios.post(this.endpoint, payload).then(response => {
-                if (response.status >= 200 && response.status < 400) {
-                    if (process.env.VERBOSE) {
-                        console.log(`Successful webhook post`);
-                    }
-                } else {
-                    console.log(`Error from remote endpoint: ${response.status}`);
+            const response = await axios.post(this.endpoint, payload);
+            if (response.status >= 200 && response.status < 400) {
+                if (process.env.VERBOSE) {
+                    console.log(`Successful webhook post`);
                 }
-            });
+            } else {
+                console.log(`Error from remote endpoint: ${response.status}`);
+            }
         } catch (e) {
             console.log(`Error sending webhook: ${e.message}`);
         }
