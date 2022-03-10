@@ -235,6 +235,7 @@ class WebhookBridge {
                 difficulty: block.difficulty,
             },
             transactionHash: txn.hash,
+            chainId: txn.chainId,
         }
     }
 
