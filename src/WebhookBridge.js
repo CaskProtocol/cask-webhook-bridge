@@ -6,28 +6,30 @@ const cask = require('@caskprotocol/sdk');
 class WebhookBridge {
 
     constructor(wssProvider, providerAddress, endpoint, environment='development') {
-        this.environment = environment;
+        this.wssProvider = wssProvider;
         this.providerAddress = providerAddress;
         this.endpoint = endpoint;
+        this.environment = environment;
+
         this.chain = cask.core.defaultChains[environment];
-        this.provider =
-            new ethers.providers.Web3Provider(
-                new Web3WsProvider(wssProvider, {
-                    clientConfig: {
-                        keepalive: true,
-                        keepaliveInterval: 30000,
-                    },
-                    reconnect: {
-                        auto: true,
-                        delay: 5000,
-                        maxAttempts: 5,
-                        onTimeout: true
-                    }
-                }),
-            )
     }
 
-    contractListener() {
+    initWeb3() {
+
+        this.provider = new ethers.providers.Web3Provider(
+            new Web3WsProvider(this.wssProvider, {
+                clientConfig: {
+                    keepalive: true,
+                    keepaliveInterval: 30000,
+                },
+                reconnect: {
+                    auto: true,
+                    delay: 5000,
+                    maxAttempts: 5,
+                    onTimeout: true
+                }
+            }),
+        )
 
         let providerAddresses;
 
@@ -41,6 +43,10 @@ class WebhookBridge {
             cask.core.deployments.CaskSubscriptions[this.environment][this.chain],
             cask.core.abi.CaskSubscriptions[this.environment],
             this.provider);
+
+        CaskSubscriptions.on('error', (err) => {
+            this.handleError(err);
+        });
 
         CaskSubscriptions.on(
             CaskSubscriptions.filters.SubscriptionCreated(null, providerAddresses),
@@ -111,6 +117,11 @@ class WebhookBridge {
                 this.handleSubscriptionPastDue(consumer, provider, subscriptionId, ref, planId, event);
             });
 
+    }
+
+    async handleError(error) {
+        console.log("Error from web3 subsystem", error);
+        // this.initWeb3(); // reinitialize web3?
     }
 
     async handleSubscriptionCreated(consumer, provider, subscriptionId, ref, planId, discountId, event) {
@@ -254,9 +265,7 @@ class WebhookBridge {
 
     async run() {
         console.log(`Starting bridge for environment ${this.environment} (using chain ${this.chain})`);
-
-        this.contractListener();
-
+        this.initWeb3();
     }
 }
 
