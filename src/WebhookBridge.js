@@ -47,6 +47,7 @@ class WebhookBridge {
 
         this.provider = new ethers.providers.Web3Provider(
             new Web3WsProvider(this.wssProvider, {
+                timeout: 30000,
                 clientConfig: {
                     keepalive: true,
                     keepaliveInterval: 30000,
