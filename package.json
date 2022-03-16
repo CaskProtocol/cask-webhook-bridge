@@ -7,10 +7,12 @@
   "author": "Subverse Labs, LLC <info@subverselabs.com>",
   "license": "MIT",
   "scripts": {
-    "start": "node ."
+    "start": "node .",
+    "docker-build": "docker build --build-arg NPM_TOKEN=${NPM_TOKEN} -t caskprotocol/webhook-bridge:latest .",
+    "docker-publish": "docker push caskprotocol/webhook-bridge:latest"
   },
   "dependencies": {
-    "@caskprotocol/sdk": "^1.0.3",
+    "@caskprotocol/sdk": "^1.0.9",
     "axios": "^0.26.0",
     "dotenv": "^16.0.0",
     "ethers": "^5.5.4",
