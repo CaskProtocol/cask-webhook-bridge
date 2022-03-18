@@ -12,7 +12,7 @@ against the providers address and are delivered  via an HTTP `POST` request with
 The webhook bridge is available at [https://github.com/CaskProtocol/cask-webhook-bridge](https://github.com/CaskProtocol/cask-webhook-bridge) and as a docker image, which can be ran using the docker command:
 
 ```shell
-docker run --name mybridge -e WEBSOCKET_PROVIDER=... -e WALLET_ADDRESS=0x... -e WEBHOOK_ENDPOINT=https://.... -d caskprotocol/webhook-bridge 
+docker run --name mybridge -e WEBSOCKET_PROVIDER=... -e WALLET_ADDRESS=0x... -e WEBHOOK_ENDPOINT=https://.... -d caskprotocol/webhook-bridge:latest
 ```
 
 
