@@ -9,6 +9,7 @@ COPY *.lock ./
 
 RUN yarn install
 COPY . .
+RUN rm .npmrc
 
 CMD [ "yarn", "start" ]
 
