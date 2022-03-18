@@ -127,19 +127,19 @@ class WebhookBridge {
 
         CaskSubscriptions.on(
             CaskSubscriptions.filters.SubscriptionRenewed(null, this.providerAddresses),
-            (consumer, provider, subscriptionId, ref, planId, discountId, event) => {
+            (consumer, provider, subscriptionId, ref, planId, event) => {
                 this.handleSubscriptionRenewed(consumer, provider, subscriptionId, ref, planId, event);
             });
 
         CaskSubscriptions.on(
             CaskSubscriptions.filters.SubscriptionTrialEnded(null, this.providerAddresses),
-            (consumer, provider, subscriptionId, ref, planId, discountId, event) => {
+            (consumer, provider, subscriptionId, ref, planId, event) => {
                 this.handleSubscriptionTrialEnded(consumer, provider, subscriptionId, ref, planId, event);
             });
 
         CaskSubscriptions.on(
             CaskSubscriptions.filters.SubscriptionPastDue(null, this.providerAddresses),
-            (consumer, provider, subscriptionId, ref, planId, discountId, event) => {
+            (consumer, provider, subscriptionId, ref, planId, event) => {
                 this.handleSubscriptionPastDue(consumer, provider, subscriptionId, ref, planId, event);
             });
 
