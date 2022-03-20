@@ -1,6 +1,6 @@
 {
   "name": "cask-webhook-bridge",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Cask Webhook Bridge",
   "main": "src/index.js",
   "repository": "https://github.com/CaskProtocol/cask-webhook-bridge.git",

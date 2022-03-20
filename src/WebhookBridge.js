@@ -30,11 +30,6 @@ class WebhookBridge {
         this.endpointMap[provider] = endpoint;
     }
 
-    handleError(error) {
-        console.log("Error from web3 subsystem", error);
-        // this.initWeb3(); // reinitialize web3?
-    }
-
     async getProviderEndpoint(provider) {
         let endpoint = this.endpointMap[provider];
         if (!endpoint && this.redis) {
@@ -45,34 +40,37 @@ class WebhookBridge {
 
     initWeb3() {
 
-        this.provider = new ethers.providers.Web3Provider(
-            new Web3WsProvider(this.wssProvider, {
-                timeout: 30000,
-                clientConfig: {
-                    keepalive: true,
-                    keepaliveInterval: 30000,
-                },
-                reconnect: {
-                    auto: true,
-                    delay: 5000,
-                    maxAttempts: 5,
-                    onTimeout: true
-                }
-            }),
-        );
+        console.log(`Starting web3 websocket at ${this.wssProvider}.`);
+
+        this.web3wsprovider = new Web3WsProvider(this.wssProvider, {
+            timeout: 30000,
+            clientConfig: {
+                keepalive: true,
+                keepaliveInterval: 30000,
+            },
+            reconnect: {
+                auto: true,
+                delay: 5000,
+                onTimeout: true
+            }
+        });
+
+        this.web3wsprovider.on('connect', () => this.startWeb3Listeners());
+        this.web3wsprovider.on('close', e => console.error('web3wsprovider Close::', e));
+        this.web3wsprovider.on('error', e => console.error('web3wsprovider Error::', e));
+        this.web3wsprovider.on('reconnect', e => console.error('web3wsprovider Reconnect::', e));
+    }
+
+    startWeb3Listeners() {
+
+        console.log("Starting web3 contract event listeners.");
+
+        this.provider = new ethers.providers.Web3Provider(this.web3wsprovider);
 
         const CaskSubscriptions = new ethers.Contract(
             cask.core.deployments.CaskSubscriptions[this.environment][this.chain],
             cask.core.abi.CaskSubscriptions[this.environment],
             this.provider);
-
-        CaskSubscriptions.on('error', (err) => {
-            this.handleError(err);
-        });
-
-        if (process.env.VERBOSE) {
-            console.log(`Listening for contract events for providers: ${this.providerAddresses}`);
-        }
 
         CaskSubscriptions.on(
             CaskSubscriptions.filters.SubscriptionCreated(null, this.providerAddresses),
