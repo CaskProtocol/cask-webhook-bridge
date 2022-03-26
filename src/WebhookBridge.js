@@ -1,5 +1,5 @@
-const ethers = require('ethers');
-const Web3WsProvider = require('web3-providers-ws');
+// const Web3 = require('web3');
+const { createAlchemyWeb3 } = require("@alch/alchemy-web3");
 const axios = require('axios');
 const { createClient } = require('redis');
 const cask = require('@caskprotocol/sdk');
@@ -39,292 +39,323 @@ class WebhookBridge {
     }
 
     initWeb3() {
-
         console.log(`Starting web3 websocket at ${this.wssProvider}.`);
 
-        this.web3wsprovider = new Web3WsProvider(this.wssProvider, {
-            timeout: 30000,
-            clientConfig: {
-                keepalive: true,
-                keepaliveInterval: 30000,
-            },
-            reconnect: {
-                auto: true,
-                delay: 5000,
-                onTimeout: true
-            }
-        });
+        // this.web3 = new Web3(this.wssProvider, {
+        //     timeout: 30000,
+        //     clientConfig: {
+        //         keepalive: true,
+        //         keepaliveInterval: 30000,
+        //     },
+        //     reconnect: {
+        //         auto: true,
+        //         delay: 5000,
+        //         onTimeout: true
+        //     }
+        // });
 
-        this.web3wsprovider.on('connect', () => this.startWeb3Listeners());
-        this.web3wsprovider.on('close', e => console.error('web3wsprovider Close::', e));
-        this.web3wsprovider.on('error', e => console.error('web3wsprovider Error::', e));
-        this.web3wsprovider.on('reconnect', e => console.error('web3wsprovider Reconnect::', e));
+        this.web3 = createAlchemyWeb3(this.wssProvider);
+
+        this.startWeb3Listeners();
     }
 
-    startWeb3Listeners() {
+    async startWeb3Listeners() {
 
-        console.log("Starting web3 contract event listeners.");
+        const filter = {provider: this.providerAddresses}
 
-        this.provider = new ethers.providers.Web3Provider(this.web3wsprovider);
+        console.log(`Starting web3 contract event listeners with filter: ${JSON.stringify(filter)}.`);
 
-        const CaskSubscriptions = new ethers.Contract(
-            cask.core.deployments.CaskSubscriptions[this.environment][this.chain],
+        this.CaskSubscriptions = new this.web3.eth.Contract(
             cask.core.abi.CaskSubscriptions[this.environment],
-            this.provider);
+            cask.core.deployments.CaskSubscriptions[this.environment][this.chain]);
 
-        CaskSubscriptions.on(
-            CaskSubscriptions.filters.SubscriptionCreated(null, this.providerAddresses),
-            (consumer, provider, subscriptionId, ref, planId, discountId, event) => {
-                this.handleSubscriptionCreated(consumer, provider, subscriptionId, ref, planId, discountId, event);
+        this.CaskSubscriptions.events.SubscriptionCreated({filter: filter})
+            .on('data', async (event) => {
+                if (this.verbose()) {
+                    console.log(`SubscriptionCreated: ${JSON.stringify(event)}`);
+                }
+                await this.handleSubscriptionCreated(event);
             });
 
-        CaskSubscriptions.on(
-            CaskSubscriptions.filters.SubscriptionChangedPlan(null, this.providerAddresses),
-            (consumer, provider, subscriptionId, ref, prevPlanId, planId, discountId, event) => {
-                this.handleSubscriptionChangedPlan(consumer, provider, subscriptionId, ref, prevPlanId,
-                    planId, discountId, event);
+        this.CaskSubscriptions.events.SubscriptionChangedPlan({filter: filter})
+            .on('data', async (event) => {
+                if (this.verbose()) {
+                    console.log(`SubscriptionChangedPlan: ${JSON.stringify(event)}`);
+                }
+                await this.handleSubscriptionCreated(event);
             });
 
-        CaskSubscriptions.on(
-            CaskSubscriptions.filters.SubscriptionPendingChangePlan(null, this.providerAddresses),
-            (consumer, provider, subscriptionId, ref, prevPlanId, planId, event) => {
-                this.handleSubscriptionPendingChangePlan(consumer, provider, subscriptionId, ref, prevPlanId,
-                    planId, event);
+        this.CaskSubscriptions.events.SubscriptionPendingChangePlan({filter: filter})
+            .on('data', async (event) => {
+                if (this.verbose()) {
+                    console.log(`SubscriptionPendingChangePlan: ${JSON.stringify(event)}`);
+                }
+                await this.handleSubscriptionPendingChangePlan(event);
             });
 
-        CaskSubscriptions.on(
-            CaskSubscriptions.filters.SubscriptionChangedDiscount(null, this.providerAddresses),
-            (consumer, provider, subscriptionId, ref, planId, discountId, event) => {
-                this.handleSubscriptionChangedDiscount(consumer, provider, subscriptionId, ref, planId,
-                    discountId, event);
+        this.CaskSubscriptions.events.SubscriptionChangedDiscount({filter: filter})
+            .on('data', async (event) => {
+                if (this.verbose()) {
+                    console.log(`SubscriptionChangedDiscount: ${JSON.stringify(event)}`);
+                }
+                await this.handleSubscriptionChangedDiscount(event);
             });
 
-        CaskSubscriptions.on(
-            CaskSubscriptions.filters.SubscriptionPaused(null, this.providerAddresses),
-            (consumer, provider, subscriptionId, ref, planId, event) => {
-                this.handleSubscriptionPaused(consumer, provider, subscriptionId, ref, planId, event);
+        this.CaskSubscriptions.events.SubscriptionPaused({filter: filter})
+            .on('data', async (event) => {
+                if (this.verbose()) {
+                    console.log(`SubscriptionPaused: ${JSON.stringify(event)}`);
+                }
+                await this.handleSubscriptionPaused(event);
             });
 
-        CaskSubscriptions.on(
-            CaskSubscriptions.filters.SubscriptionResumed(null, this.providerAddresses),
-            (consumer, provider, subscriptionId, ref, planId, event) => {
-                this.handleSubscriptionResumed(consumer, provider, subscriptionId, ref, planId, event);
+        this.CaskSubscriptions.events.SubscriptionResumed({filter: filter})
+            .on('data', async (event) => {
+                if (this.verbose()) {
+                    console.log(`SubscriptionResumed: ${JSON.stringify(event)}`);
+                }
+                await this.handleSubscriptionResumed(event);
             });
 
-        CaskSubscriptions.on(
-            CaskSubscriptions.filters.SubscriptionPendingCancel(null, this.providerAddresses),
-            (consumer, provider, subscriptionId, ref, planId, cancelAt, event) => {
-                this.handleSubscriptionPendingCancel(consumer, provider, subscriptionId, ref, planId, cancelAt, event);
+        this.CaskSubscriptions.events.SubscriptionPendingCancel({filter: filter})
+            .on('data', async (event) => {
+                if (this.verbose()) {
+                    console.log(`SubscriptionPendingCancel: ${JSON.stringify(event)}`);
+                }
+                await this.handleSubscriptionPendingCancel(event);
             });
 
-        CaskSubscriptions.on(
-            CaskSubscriptions.filters.SubscriptionCanceled(null, this.providerAddresses),
-            (consumer, provider, subscriptionId, ref, planId, event) => {
-                this.handleSubscriptionCanceled(consumer, provider, subscriptionId, ref, planId, event);
+        this.CaskSubscriptions.events.SubscriptionCanceled({filter: filter})
+            .on('data', async (event) => {
+                if (this.verbose()) {
+                    console.log(`SubscriptionCanceled: ${JSON.stringify(event)}`);
+                }
+                await this.handleSubscriptionCanceled(event);
             });
 
-        CaskSubscriptions.on(
-            CaskSubscriptions.filters.SubscriptionRenewed(null, this.providerAddresses),
-            (consumer, provider, subscriptionId, ref, planId, event) => {
-                this.handleSubscriptionRenewed(consumer, provider, subscriptionId, ref, planId, event);
+        this.CaskSubscriptions.events.SubscriptionRenewed({filter: filter})
+            .on('data', async (event) => {
+                if (this.verbose()) {
+                    console.log(`SubscriptionRenewed: ${JSON.stringify(event)}`);
+                }
+                await this.handleSubscriptionRenewed(event);
             });
 
-        CaskSubscriptions.on(
-            CaskSubscriptions.filters.SubscriptionTrialEnded(null, this.providerAddresses),
-            (consumer, provider, subscriptionId, ref, planId, event) => {
-                this.handleSubscriptionTrialEnded(consumer, provider, subscriptionId, ref, planId, event);
+        this.CaskSubscriptions.events.SubscriptionTrialEnded({filter: filter})
+            .on('data', async (event) => {
+                if (this.verbose()) {
+                    console.log(`SubscriptionTrialEnded: ${JSON.stringify(event)}`);
+                }
+                await this.handleSubscriptionTrialEnded(event);
             });
 
-        CaskSubscriptions.on(
-            CaskSubscriptions.filters.SubscriptionPastDue(null, this.providerAddresses),
-            (consumer, provider, subscriptionId, ref, planId, event) => {
-                this.handleSubscriptionPastDue(consumer, provider, subscriptionId, ref, planId, event);
+        this.CaskSubscriptions.events.SubscriptionPastDue({filter: filter})
+            .on('data', async (event) => {
+                if (this.verbose()) {
+                    console.log(`SubscriptionPastDue: ${JSON.stringify(event)}`);
+                }
+                await this.handleSubscriptionPastDue(event);
             });
-
     }
 
-    async handleSubscriptionCreated(consumer, provider, subscriptionId, ref, planId, discountId, event) {
+    async handleSubscriptionCreated(event) {
         const payload = await this.webhookPayload(
             event.event,
-            {consumer, provider, subscriptionId: subscriptionId.toHexString(), ref, planId, discountId},
+            {
+                consumer: event.returnValues.consumer,
+                provider: event.returnValues.provider,
+                subscriptionId: this.web3.utils.numberToHex(event.returnValues.subscriptionId),
+                ref: event.returnValues.ref,
+                planId: event.returnValues.planId,
+                discountId: event.returnValues.discountId
+            },
             event
         );
-        const endpoint = await this.getProviderEndpoint(provider);
-        if (endpoint) {
-            this.sendWebhook(endpoint, payload);
-        } else {
-            console.log(`No endpoint mapped for provider ${provider}`);
-        }
+        this.sendWebhook(event.returnValues.provider, payload);
     }
 
-    async handleSubscriptionChangedPlan(consumer, provider, subscriptionId, ref, prevPlanId,
-                                        planId, discountId, event)
+    async handleSubscriptionChangedPlan(event)
     {
         const payload = await this.webhookPayload(
             event.event,
-            {consumer, provider, subscriptionId: subscriptionId.toHexString(), ref, prevPlanId, planId, discountId},
+            {
+                consumer: event.returnValues.consumer,
+                provider: event.returnValues.provider,
+                subscriptionId: this.web3.utils.numberToHex(event.returnValues.subscriptionId),
+                ref: event.returnValues.ref,
+                prevPlanId: event.returnValues.prevPlanId,
+                planId: event.returnValues.planId,
+                discountId: event.returnValues.discountId
+            },
             event
         );
-        const endpoint = await this.getProviderEndpoint(provider);
-        if (endpoint) {
-            this.sendWebhook(endpoint, payload);
-        } else {
-            console.log(`No endpoint mapped for provider ${provider}`);
-        }
+        this.sendWebhook(event.returnValues.provider, payload);
     }
 
-    async handleSubscriptionPendingChangePlan(consumer, provider, subscriptionId, ref, prevPlanId, planId, event) {
+    async handleSubscriptionPendingChangePlan(event) {
         const payload = await this.webhookPayload(
             event.event,
-            {consumer, provider, subscriptionId: subscriptionId.toHexString(), ref, prevPlanId, planId},
+            {
+                consumer: event.returnValues.consumer,
+                provider: event.returnValues.provider,
+                subscriptionId: this.web3.utils.numberToHex(event.returnValues.subscriptionId),
+                ref: event.returnValues.ref,
+                prevPlanId: event.returnValues.prevPlanId,
+                planId: event.returnValues.planId
+            },
             event
         );
-        const endpoint = await this.getProviderEndpoint(provider);
-        if (endpoint) {
-            this.sendWebhook(endpoint, payload);
-        } else {
-            console.log(`No endpoint mapped for provider ${provider}`);
-        }
+        this.sendWebhook(event.returnValues.provider, payload);
     }
 
-    async handleSubscriptionChangedDiscount(consumer, provider, subscriptionId, ref, planId, discountId, event) {
+    async handleSubscriptionChangedDiscount(event) {
         const payload = await this.webhookPayload(
             event.event,
-            {consumer, provider, subscriptionId: subscriptionId.toHexString(), ref, planId, discountId},
+            {
+                consumer: event.returnValues.consumer,
+                provider: event.returnValues.provider,
+                subscriptionId: this.web3.utils.numberToHex(event.returnValues.subscriptionId),
+                ref: event.returnValues.ref,
+                planId: event.returnValues.planId,
+                discountId: event.returnValues.discountId
+            },
             event
         );
-        const endpoint = await this.getProviderEndpoint(provider);
-        if (endpoint) {
-            this.sendWebhook(endpoint, payload);
-        } else {
-            console.log(`No endpoint mapped for provider ${provider}`);
-        }
+        this.sendWebhook(event.returnValues.provider, payload);
     }
 
-    async handleSubscriptionPaused(consumer, provider, subscriptionId, ref, planId, event) {
+    async handleSubscriptionPaused(event) {
         const payload = await this.webhookPayload(
             event.event,
-            {consumer, provider, subscriptionId: subscriptionId.toHexString(), ref, planId},
+            {
+                consumer: event.returnValues.consumer,
+                provider: event.returnValues.provider,
+                subscriptionId: this.web3.utils.numberToHex(event.returnValues.subscriptionId),
+                ref: event.returnValues.ref,
+                planId: event.returnValues.planId
+            },
             event
         );
-        const endpoint = await this.getProviderEndpoint(provider);
-        if (endpoint) {
-            this.sendWebhook(endpoint, payload);
-        } else {
-            console.log(`No endpoint mapped for provider ${provider}`);
-        }
+        this.sendWebhook(event.returnValues.provider, payload);
     }
 
-    async handleSubscriptionResumed(consumer, provider, subscriptionId, ref, planId, event) {
+    async handleSubscriptionResumed(event) {
         const payload = await this.webhookPayload(
             event.event,
-            {consumer, provider, subscriptionId: subscriptionId.toHexString(), ref, planId},
+            {
+                consumer: event.returnValues.consumer,
+                provider: event.returnValues.provider,
+                subscriptionId: this.web3.utils.numberToHex(event.returnValues.subscriptionId),
+                ref: event.returnValues.ref,
+                planId: event.returnValues.planId
+            },
             event
         );
-        const endpoint = await this.getProviderEndpoint(provider);
-        if (endpoint) {
-            this.sendWebhook(endpoint, payload);
-        } else {
-            console.log(`No endpoint mapped for provider ${provider}`);
-        }
+        this.sendWebhook(event.returnValues.provider, payload);
     }
 
-    async handleSubscriptionPendingCancel(consumer, provider, subscriptionId, ref, planId, cancelAt, event) {
+    async handleSubscriptionPendingCancel(event) {
         const payload = await this.webhookPayload(
             event.event,
-            {consumer, provider, subscriptionId: subscriptionId.toHexString(), ref, planId},
+            {
+                consumer: event.returnValues.consumer,
+                provider: event.returnValues.provider,
+                subscriptionId: this.web3.utils.numberToHex(event.returnValues.subscriptionId),
+                ref: event.returnValues.ref,
+                planId: event.returnValues.planId
+            },
             event
         );
-        const endpoint = await this.getProviderEndpoint(provider);
-        if (endpoint) {
-            this.sendWebhook(endpoint, payload);
-        } else {
-            console.log(`No endpoint mapped for provider ${provider}`);
-        }
+        this.sendWebhook(event.returnValues.provider, payload);
     }
 
-    async handleSubscriptionCanceled(consumer, provider, subscriptionId, ref, planId, event) {
+    async handleSubscriptionCanceled(event) {
         const payload = await this.webhookPayload(
             event.event,
-            {consumer, provider, subscriptionId: subscriptionId.toHexString(), ref, planId},
+            {
+                consumer: event.returnValues.consumer,
+                provider: event.returnValues.provider,
+                subscriptionId: this.web3.utils.numberToHex(event.returnValues.subscriptionId),
+                ref: event.returnValues.ref,
+                planId: event.returnValues.planId
+            },
             event
         );
-        const endpoint = await this.getProviderEndpoint(provider);
-        if (endpoint) {
-            this.sendWebhook(endpoint, payload);
-        } else {
-            console.log(`No endpoint mapped for provider ${provider}`);
-        }
+        this.sendWebhook(event.returnValues.provider, payload);
     }
 
-    async handleSubscriptionRenewed(consumer, provider, subscriptionId, ref, planId, event) {
+    async handleSubscriptionRenewed(event) {
         const payload = await this.webhookPayload(
             event.event,
-            {consumer, provider, subscriptionId: subscriptionId.toHexString(), ref, planId},
+            {
+                consumer: event.returnValues.consumer,
+                provider: event.returnValues.provider,
+                subscriptionId: this.web3.utils.numberToHex(event.returnValues.subscriptionId),
+                ref: event.returnValues.ref,
+                planId: event.returnValues.planId
+            },
             event
         );
-        const endpoint = await this.getProviderEndpoint(provider);
-        if (endpoint) {
-            this.sendWebhook(endpoint, payload);
-        } else {
-            console.log(`No endpoint mapped for provider ${provider}`);
-        }
+        this.sendWebhook(event.returnValues.provider, payload);
     }
 
-    async handleSubscriptionTrialEnded(consumer, provider, subscriptionId, ref, planId, event) {
+    async handleSubscriptionTrialEnded(event) {
         const payload = await this.webhookPayload(
             event.event,
-            {consumer, provider, subscriptionId: subscriptionId.toHexString(), ref, planId},
+            {
+                consumer: event.returnValues.consumer,
+                provider: event.returnValues.provider,
+                subscriptionId: this.web3.utils.numberToHex(event.returnValues.subscriptionId),
+                ref: event.returnValues.ref,
+                planId: event.returnValues.planId
+            },
             event
         );
-        const endpoint = await this.getProviderEndpoint(provider);
-        if (endpoint) {
-            this.sendWebhook(endpoint, payload);
-        } else {
-            console.log(`No endpoint mapped for provider ${provider}`);
-        }
+        this.sendWebhook(event.returnValues.provider, payload);
     }
 
-    async handleSubscriptionPastDue(consumer, provider, subscriptionId, ref, planId, event) {
+    async handleSubscriptionPastDue(event) {
         const payload = await this.webhookPayload(
             event.event,
-            {consumer, provider, subscriptionId: subscriptionId.toHexString(), ref, planId},
+            {
+                consumer: event.returnValues.consumer,
+                provider: event.returnValues.provider,
+                subscriptionId: this.web3.utils.numberToHex(event.returnValues.subscriptionId),
+                ref: event.returnValues.ref,
+                planId: event.returnValues.planId
+            },
             event
         );
-        const endpoint = await this.getProviderEndpoint(provider);
-        if (endpoint) {
-            this.sendWebhook(endpoint, payload);
-        } else {
-            console.log(`No endpoint mapped for provider ${provider}`);
-        }
+        this.sendWebhook(event.returnValues.provider, payload);
     }
 
     async webhookPayload(name, args, blockchainEvent) {
-        const block = await blockchainEvent.getBlock();
-        const txn = await blockchainEvent.getTransaction();
         return {
             event: name,
             args: args,
             block: {
-                number: block.number,
-                hash: block.hash,
-                parentHash: block.parentHash,
-                timestamp: block.timestamp,
-                difficulty: block.difficulty,
+                number: blockchainEvent.blockNumber,
+                hash: blockchainEvent.blockHash,
             },
-            transactionHash: txn.hash,
-            chainId: txn.chainId,
+            transactionHash: blockchainEvent.transactionHash,
+            chainId: this.web3.utils.hexToNumber(this.chain),
         }
     }
 
-    async sendWebhook(endpoint, payload) {
+    async sendWebhook(provider, payload) {
         try {
-            if (process.env.VERBOSE) {
+            const endpoint = await this.getProviderEndpoint(provider);
+            if (!endpoint) {
+                console.log(`No endpoint mapped for provider ${provider}`);
+                return;
+            }
+
+            if (this.verbose()) {
                 console.log(`Sending webhook to endpoint ${endpoint} for event ${payload.event}`);
             }
             const response = await axios.post(endpoint, payload);
             if (response.status >= 200 && response.status < 400) {
-                if (process.env.VERBOSE) {
+                if (this.verbose()) {
                     console.log(`Successful webhook post`);
                 }
             } else {
@@ -335,6 +366,9 @@ class WebhookBridge {
         }
     }
 
+    verbose() {
+        return process.env.VERBOSE === '1';
+    }
 
     async runSingle(providerAddress, endpoint) {
         console.log(`Starting webhook bridge for environment ${this.environment} (using chain ${this.chain})`);
