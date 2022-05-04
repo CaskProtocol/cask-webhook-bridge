@@ -2,7 +2,7 @@
 const { createAlchemyWeb3 } = require("@alch/alchemy-web3");
 const axios = require('axios');
 const { createClient } = require('redis');
-const cask = require('@caskprotocol/sdk');
+const { CaskSDK } = require('@caskprotocol/sdk');
 
 class WebhookBridge {
 
@@ -12,7 +12,7 @@ class WebhookBridge {
 
         this.endpointMap = {};
 
-        this.chain = cask.core.defaultChains[environment];
+        this.chain = CaskSDK.defaultChains[environment];
     }
 
     enableRedis(redisUrl) {
@@ -66,8 +66,8 @@ class WebhookBridge {
         console.log(`Starting web3 contract event listeners with filter: ${JSON.stringify(filter)}.`);
 
         this.CaskSubscriptions = new this.web3.eth.Contract(
-            cask.core.abi.CaskSubscriptions[this.environment],
-            cask.core.deployments.CaskSubscriptions[this.environment][this.chain]);
+            CaskSDK.abi.CaskSubscriptions[this.environment],
+            CaskSDK.deployments.CaskSubscriptions[this.environment][this.chain.chainId]);
 
         this.CaskSubscriptions.events.SubscriptionCreated({filter: filter})
             .on('data', async (event) => {
@@ -91,14 +91,6 @@ class WebhookBridge {
                     console.log(`SubscriptionPendingChangePlan: ${JSON.stringify(event)}`);
                 }
                 await this.handleSubscriptionPendingChangePlan(event);
-            });
-
-        this.CaskSubscriptions.events.SubscriptionChangedDiscount({filter: filter})
-            .on('data', async (event) => {
-                if (this.verbose()) {
-                    console.log(`SubscriptionChangedDiscount: ${JSON.stringify(event)}`);
-                }
-                await this.handleSubscriptionChangedDiscount(event);
             });
 
         this.CaskSubscriptions.events.SubscriptionPaused({filter: filter})
@@ -338,7 +330,7 @@ class WebhookBridge {
                 hash: blockchainEvent.blockHash,
             },
             transactionHash: blockchainEvent.transactionHash,
-            chainId: this.web3.utils.hexToNumber(this.chain),
+            chainId: this.chain.chainId,
         }
     }
 
@@ -371,7 +363,7 @@ class WebhookBridge {
     }
 
     async runSingle(providerAddress, endpoint) {
-        console.log(`Starting webhook bridge for environment ${this.environment} (using chain ${this.chain})`);
+        console.log(`Starting webhook bridge for environment ${this.environment} (using chain ${this.chain.chainId})`);
 
         if (providerAddress.includes(',')) {
             const providerAddresses = providerAddress.split(',');
@@ -388,7 +380,7 @@ class WebhookBridge {
     }
 
     async runMulti(redisUrl) {
-        console.log(`Starting multi-tenant webhook bridge for environment ${this.environment} (using chain ${this.chain})`);
+        console.log(`Starting multi-tenant webhook bridge for environment ${this.environment} (using chain ${this.chain.chainId})`);
 
         await this.enableRedis(redisUrl);
 
