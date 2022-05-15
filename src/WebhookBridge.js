@@ -6,13 +6,31 @@ const { CaskSDK } = require('@caskprotocol/sdk');
 
 class WebhookBridge {
 
-    constructor(wssProvider, environment='development') {
+    constructor(wssProvider, environment='development', chain=undefined) {
         this.wssProvider = wssProvider;
         this.environment = environment;
 
         this.endpointMap = {};
 
-        this.chain = CaskSDK.defaultChains[environment];
+        const chainNum = parseInt(chain)
+        if (chainNum) {
+            chain = chainNum;
+        }
+
+        if (chain) {
+            this.chain = CaskSDK.chains.lookupChain(chain);
+            if (!this.chain) {
+                throw new Error(`Unable to locate chain ${chain}`);
+            }
+            if (!CaskSDK.deployments.CaskVault[this.environment][this.chain.chainId]) {
+                throw new Error(`Chain ${this.chain.chainId} is not valid for environment ${this.environment}`);
+            }
+        } else {
+            this.chain = CaskSDK.defaultChains[this.environment];
+        }
+        if (!this.chain) {
+            throw new Error(`Unable to identify chain`);
+        }
     }
 
     enableRedis(redisUrl) {
@@ -38,7 +56,7 @@ class WebhookBridge {
         return endpoint;
     }
 
-    initWeb3() {
+    async initWeb3() {
         console.log(`Starting web3 websocket at ${this.wssProvider}.`);
 
         // this.web3 = new Web3(this.wssProvider, {
@@ -55,6 +73,10 @@ class WebhookBridge {
         // });
 
         this.web3 = createAlchemyWeb3(this.wssProvider);
+        const web3ChainId = await this.web3.eth.getChainId();
+        if (web3ChainId !== this.chain.chainId) {
+            throw new Error(`Web3 provider reported mismatched chain ${web3ChainId} - configured to use ${this.chain.chainId}`);
+        }
 
         this.startWeb3Listeners();
     }
@@ -363,7 +385,7 @@ class WebhookBridge {
     }
 
     async runSingle(providerAddress, endpoint) {
-        console.log(`Starting webhook bridge for environment ${this.environment} (using chain ${this.chain.chainId})`);
+        console.log(`Starting webhook bridge for environment ${this.environment} on chain ${this.chain.chainId} (${this.chain.shortName})`);
 
         if (providerAddress.includes(',')) {
             const providerAddresses = providerAddress.split(',');
@@ -380,7 +402,7 @@ class WebhookBridge {
     }
 
     async runMulti(redisUrl) {
-        console.log(`Starting multi-tenant webhook bridge for environment ${this.environment} (using chain ${this.chain.chainId})`);
+        console.log(`Starting multi-tenant webhook bridge for environment ${this.environment} on chain ${this.chain.chainId} (${this.chain.shortName})`);
 
         await this.enableRedis(redisUrl);
 
