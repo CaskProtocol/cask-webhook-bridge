@@ -37,10 +37,10 @@ environment variables.
 
 | Event Name                                                      |                                  Description                                   |
 |-----------------------------------------------------------------|:------------------------------------------------------------------------------:|
-| [SubscriptionCreated](#subscriptioncreated)                     |                        A new subscription has been created                     |
+| [SubscriptionCreated](#subscriptioncreated)                     |                      A new subscription has been created                       |
 | [SubscriptionChangedPlan](#subscriptionchangedplan)             |                   An existing subscription has changed plans                   |
 | [SubscriptionPendingChangePlan](#subscriptionpendingchangeplan) |      An existing subscription has scheduled a plan change at next renewal      |
-| [SubscriptionChangedDiscount](#subscriptionchangeddiscount)     |                  An existing subscription applied a discount                   |
+| [SubscriptionPendingPause](#subscriptionpendingpause)           |             A subscription is schdeuled to pause at next renewal               |
 | [SubscriptionPaused](#subscriptionpaused)                       |                           A subscription was paused                            |
 | [SubscriptionResumed](#subscriptionresumed)                     |                           A subscription was resumed                           |
 | [SubscriptionPendingCancel](#subscriptionpendingcancel)         |         A subscription was scheduled for cancellation at next renewal          |
@@ -176,9 +176,9 @@ The `SubscriptionPendingChangePlan` event is triggered when a consumer creates a
 * planId
 * discountId
 
-## SubscriptionChangedDiscount
+## SubscriptionPendingPause
 
-The `SubscriptionPendingChangePlan` event is triggered when a consumer creates a subscription.
+The `SubscriptionPendingPause` event is triggered when a subscription is schdeuled to pause at the next renewal.
 
 ### Arguments
 
@@ -187,7 +187,6 @@ The `SubscriptionPendingChangePlan` event is triggered when a consumer creates a
 * subscriptionId
 * ref
 * planId
-* discountId
 
 ## SubscriptionPaused
 
